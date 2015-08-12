@@ -1,23 +1,12 @@
----
-title: 'Reproducible Research: Peer Assessment 1'
-output:
-  html_document:
-    keep_md: yes
-  pdf_document: default
----
+# Reproducible Research: Peer Assessment 1
 
-```{r setOptions, echo=FALSE}
-## Set global options 
-library(knitr)
-opts_chunk$set(echo=TRUE,       # Always show the code
-               results="asis",
-               fig.height=4)    # Height of figures 
-```
+
 
 ## Loading and preprocessing the data
 The following code download the data from the provided link and load it into a data frame named *activity*. 
 
-```{r processingData}
+
+```r
 ## Download & read data 
 setInternet2(use=T)
 fileUrl <- paste("https://d396qusza40orc.cloudfront.net/",
@@ -38,7 +27,8 @@ I wrote a function to
 3. Calculate the mean and the median of the total number of steps across all days. 
 
 The histogram is displayed as the function is called:
-```{r stepsPerDay}
+
+```r
 dailyStepHist <- function(x, subtit="") {
     sum <-  sapply(unique(x$date), function(day) {
                     sum(x$step[x$date==day], na.rm=T)})
@@ -49,15 +39,22 @@ dailyStepHist <- function(x, subtit="") {
 totalSteps <- dailyStepHist(activity)
 ```
 
+![](PA1_template_files/figure-html/stepsPerDay-1.png) 
+
 The function returns the mean & median of the total number of steps taken per day:
-```{r histogramStepsPerDay}
+
+```r
 totalSteps
 ```
+
+    Mean   Median 
+ 9354.23 10395.00 
 
 ## What is the average daily activity pattern?
 Here is the pattern of the average daily activity, calculated as the average number of steps taken during each 5-minute interval across all days:
 
-```{r dailyPattern}
+
+```r
 interval <- data.frame(id = unique(activity$interval))
 interval$step <- sapply(interval$id, function(int) {
                     mean(activity$step[activity$interval==int], na.rm=T)})
@@ -65,20 +62,29 @@ with(interval, plot(id, step, type="l",
                     xlab="Interval", ylab="Average number of steps"))
 ```
 
-The identifier of the 5-minute interval that has the maximum number of steps is `r interval$id[which.max(interval$step)]`
+![](PA1_template_files/figure-html/dailyPattern-1.png) 
 
-```{r maxStep}
+The identifier of the 5-minute interval that has the maximum number of steps is 835
+
+
+```r
 interval$id[which.max(interval$step)]
 ```
 
+[1] 835
+
 ## Imputing missing values
-The number of missing values in the data is `r sum(is.na(activity$step))`
-```{r missingValues}
+The number of missing values in the data is 2304
+
+```r
 sum(is.na(activity$step)) 
 ```
 
+[1] 2304
+
 The graph below suggests the mean tends to overestimate the number of steps taken during each interval (the mean is higher than the median):
-```{r meanVsMedian}
+
+```r
 interval$med <- sapply(interval$id, function(int) {
     median(activity$step[activity$interval==int], na.rm=T)})
 plot(interval$id, interval$step, type="l",
@@ -88,36 +94,49 @@ legend("topright", col=c("black", "red"),
        legend=c("Mean", "Median"),lty=1)
 ```
 
+![](PA1_template_files/figure-html/meanVsMedian-1.png) 
+
 Therefore, I replace the missing values using the median of the number of steps taken during each interval across all days. I reuse the function `dailyStepHist` to draw a histogram of the new dataset (after imputing missing values):
 
-```{r imputMissingValues}
+
+```r
 newact <- activity
 newact <- merge(newact, interval[,c("id", "med")], by.x="interval", by.y="id")
 newact$steps[is.na(newact$step)] <- newact$med[is.na(newact$step)]
 newTotalSteps <- dailyStepHist(newact, subtit="with imputed missing values")
 ```
 
+![](PA1_template_files/figure-html/imputMissingValues-1.png) 
+
 It is not obvious that the two histograms differ, but the statistics have changed after imputing missing data:
 
-```{r compare}
+
+```r
 totalSteps <- rbind(totalSteps, newTotalSteps)
 rownames(totalSteps) = c("Original data", "With imputed values")
 kable(totalSteps)
 ```
+
+                           Mean   Median
+--------------------  ---------  -------
+Original data          9354.230    10395
+With imputed values    9503.869    10395
 
 Since the median was used to field the missing values, the median does not change after compared to that of the original data. The mean increases since the missing data are replaced by non-negative values. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 A new factor variable is created (`dow` - day of week) to note whether the day is "weekday" or "weekend" day.
 
-```{r DayofWeek}
+
+```r
 newact$dow <- as.factor(ifelse(as.POSIXlt(newact$date)$wday %in% 1:5,
                                "weekday", "weekend")) 
 ```
 
 Here is the R code that computes the average number of steps taken during 5-minute intervals across all weekday and weekend days:
 
-```{r DayofWeekAverage}
+
+```r
 interval$wkmean <- sapply(interval$id, function(int) {
     mean(newact$steps[newact$interval==int & as.character(newact$dow)=="weekend"])})
 interval$wdmean <- sapply(interval$id, function(int) {
@@ -126,7 +145,8 @@ interval$wdmean <- sapply(interval$id, function(int) {
 
 Panel plot of the time series of the average number of steps taken during 5-minute intervals on weekday and weekend days: 
 
-```{r DayofWeekPlots}
+
+```r
 par(mfrow=c(2,1),
     mar = c(0,1,1,2),
     oma = c(3,3,0.5,0.5),
@@ -151,5 +171,7 @@ plot(interval$id, interval$wdmean, type="l", col="red", axes=F,
 mtext("Interval", side = 1, outer=T, line=2)
 mtext("Number of steps", side=2, outer=T, las=0, line=2)
 ```
+
+![](PA1_template_files/figure-html/DayofWeekPlots-1.png) 
 
 The patterns differ for weekdays vs. weekends. There are spikes during the intervals 800s and 1800s (commutes?) of the weekdays, which are not observed during the weekends. Subjects tend to move more during other non-sleeping hours on weekends compared to the weekdays. 
